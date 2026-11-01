@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05060d" />
+  <meta name="description" content="Moon Lander Explorer — a procedurally generated lunar flight and rescue expedition. Hold to thrust, explore caves, land at stations and upgrade your lander." />
+  <title>Moon Lander Explorer</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-shell">
+    <canvas id="game" aria-label="Moon Lander Explorer game canvas"></canvas>
+    <div class="screen-texture" aria-hidden="true"></div>
+
+    <!-- ============================ FLIGHT HUD ============================ -->
+    <div id="hud" class="hidden" aria-live="polite">
+      <header class="hud-top">
+        <div class="vitals-panel">
+          <div class="vital vital-hull">
+            <div class="vital-head"><span>HULL</span><b id="health-value">100</b></div>
+            <div class="bar-track"><div id="health-fill" class="bar-fill"></div><i class="bar-ticks"></i></div>
+          </div>
+          <div class="vital vital-shield">
+            <div class="vital-head"><span>SHIELD</span><b id="shield-value">100</b></div>
+            <div class="bar-track"><div id="shield-fill" class="bar-fill"></div><i class="bar-ticks"></i></div>
+          </div>
+          <div class="salvage-chip" title="Salvage credit">
+            <span class="salvage-icon" aria-hidden="true"></span>
+            <span class="salvage-label">SALVAGE</span>
+            <b id="salvage-value">0</b>
+          </div>
+        </div>
+
+        <div class="run-panel">
+          <div class="run-stat">
+            <span>SCORE</span>
+            <b id="score-value">0</b>
+          </div>
+          <div class="run-stat small">
+            <span>BEST</span>
+            <b id="best-value">0</b>
+          </div>
+          <div class="run-stat small">
+            <span>RANGE</span>
+            <b id="distance-value">0 M</b>
+          </div>
+          <button id="btn-pause" class="hud-icon-btn" type="button" aria-label="Pause game">
+            <span class="pause-glyph" aria-hidden="true"><i></i><i></i></span>
+          </button>
+        </div>
+      </header>
+
+      <div id="warning-banner" class="hidden" role="status">
+        <span class="warning-light" aria-hidden="true"></span>
+        <b id="warning-text">HULL CRITICAL</b>
+      </div>
+
+      <section id="mission-card" class="holo-card">
+        <div class="card-corner tl"></div><div class="card-corner tr"></div>
+        <div class="eyebrow">
+          <span>SECTOR <b id="mission-sector">01</b></span>
+          <span id="mission-name">MARE TRANQUILLITATIS</span>
+        </div>
+        <div class="mission-title" id="mission-text">Collect 3 mineral samples</div>
+        <div class="mission-bar">
+          <div class="mission-bar-fill" id="mission-progress-fill"></div>
+        </div>
+        <div class="mission-foot">
+          <span id="mission-progress-text">0 / 3</span>
+          <span id="mission-target">REACH NEXT STATION</span>
+        </div>
+      </section>
+
+      <aside id="radar-card" class="holo-card" aria-label="Radar and station proximity">
+        <div class="card-corner tl"></div><div class="card-corner tr"></div><div class="card-corner bl"></div><div class="card-corner br"></div>
+        <div class="radar-head"><span>LRV // RADAR</span><span id="radar-range">1.4 KM</span></div>
+        <canvas id="radar" width="252" height="104" aria-hidden="true"></canvas>
+        <div id="pad-proximity">
+          <span id="pad-arrow" class="pad-arrow">›</span>
+          <span class="pad-copy"><small>NEXT PAD</small><b id="pad-name">—</b></span>
+          <span id="pad-distance" class="pad-distance">—</span>
+        </div>
+      </aside>
+
+      <div id="toasts" aria-live="polite"></div>
+
+      <div id="control-hint" class="control-hint">
+        <span class="hint-key">HOLD</span>
+        <span class="hint-desktop">SPACE / MOUSE</span>
+        <span class="hint-touch">TOUCH</span>
+        <span class="hint-tail">TO FIRE THRUSTERS</span>
+      </div>
+    </div>
+
+    <!-- ============================== OVERLAYS ============================= -->
+    <div id="overlay">
+      <!-- MAIN MENU -->
+      <section id="screen-menu" class="screen screen-menu">
+        <div class="menu-grid">
+          <div class="menu-main">
+            <div class="menu-kicker"><span class="status-dot"></span> ARTEMIS EXPLORATION PROGRAM // FLIGHT 01</div>
+            <div class="menu-title-wrap">
+              <div class="mission-emblem" aria-hidden="true">
+                <svg viewBox="0 0 120 120" role="presentation">
+                  <defs>
+                    <linearGradient id="emblemGold" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stop-color="#e8cd8d"/><stop offset="1" stop-color="#9b7338"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(154,230,226,.32)" stroke-width="1"/>
+                  <circle cx="60" cy="60" r="47" fill="none" stroke="rgba(154,230,226,.16)" stroke-width="1" stroke-dasharray="3 7"/>
+                  <path d="M60 9v9M60 102v9M9 60h9M102 60h9" stroke="rgba(154,230,226,.5)" stroke-width="1"/>
+                  <path d="M35 84c0-14 11-25 25-25s25 11 25 25" fill="none" stroke="url(#emblemGold)" stroke-width="2"/>
+                  <path d="M43 70l-9-19 5-2 8 17M77 70l9-19-5-2-8 17" fill="none" stroke="#c8b17a" stroke-width="2"/>
+                  <path d="M49 56h22l6 20H43z" fill="#ba9a5e" stroke="#e7d19b" stroke-width="1.2"/>
+                  <rect x="50" y="42" width="20" height="17" rx="4" fill="#e9e5d8" stroke="#9a907c" stroke-width="1.2"/>
+                  <rect x="54" y="46" width="12" height="8" rx="2" fill="#173845" stroke="#6edddb" stroke-width=".8"/>
+                  <path d="M54 82l-7 10M66 82l7 10" stroke="#c8b17a" stroke-width="2"/>
+                  <circle cx="60" cy="60" r="2.2" fill="#83f9e9"/>
+                </svg>
+              </div>
+              <div>
+                <h1 class="menu-title">MOON<br/><span>LANDER</span><br/>EXPLORER</h1>
+                <p class="menu-subtitle">Hold the line between orbit and rock. Explore a living moon, rescue the stranded, and rebuild the outpost chain.</p>
+              </div>
+            </div>
+
+            <div class="menu-actions">
+              <button id="btn-continue" class="btn btn-primary" type="button">
+                <span class="btn-index">01</span>
+                <span class="btn-copy"><small>RESTORE LAST CHECKPOINT</small><b>CONTINUE MISSION</b></span>
+                <span class="btn-arrow">›</span>
+              </button>
+              <button id="btn-new" class="btn" type="button">
+                <span class="btn-index">02</span>
+                <span class="btn-copy"><small>BEGIN A NEW EXPEDITION</small><b>START NEW MISSION</b></span>
+                <span class="btn-arrow">›</span>
+              </button>
+              <div class="menu-row">
+                <button id="btn-help" class="btn btn-mini" type="button">FLIGHT MANUAL</button>
+                <button id="btn-settings" class="btn btn-mini" type="button">SETTINGS</button>
+              </div>
+            </div>
+
+            <div class="menu-controls">
+              <span><i class="keycap">HOLD</i> SPACE / W / TAP</span>
+              <span><i class="keycap">P / ESC</i> PAUSE</span>
+              <span><i class="keycap">NO WEAPONS</i> SURVIVE. EXPLORE.</span>
+            </div>
+          </div>
+
+          <aside class="menu-side">
+            <div class="side-header">
+              <span>MISSION RECORD</span>
+              <span class="live-tag"><i></i> LOCAL</span>
+            </div>
+            <div class="record-grid">
+              <div class="record"><span>BEST SCORE</span><b id="menu-best">0</b></div>
+              <div class="record"><span>SALVAGE</span><b id="menu-salvage">0</b></div>
+              <div class="record"><span>MISSIONS</span><b id="menu-missions">0</b></div>
+              <div class="record"><span>RESCUES</span><b id="menu-rescues">0</b></div>
+            </div>
+            <div class="checkpoint-card">
+              <span class="checkpoint-label">LAST CHECKPOINT</span>
+              <b id="menu-checkpoint">NO FLIGHT DATA</b>
+              <small id="menu-checkpoint-sector">No flight data on this terminal</small>
+            </div>
+            <div class="crew-note">
+              <span class="crew-mark" aria-hidden="true">◎</span>
+              <p>“The moon does not reward speed. It rewards grace.”</p>
+              <small>— FIELD NOTE, LRV-07</small>
+            </div>
+            <div class="build-tag">MLE // BUILD 1.0.0 <span>NO SIGNAL LOST</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- STATION / UPGRADES -->
+      <section id="screen-station" class="screen screen-station hidden">
+        <div class="station-shell">
+          <header class="station-header">
+            <div>
+              <div class="menu-kicker"><span class="status-dot"></span> CHECKPOINT SECURED // <span id="station-sector">SECTOR 01</span></div>
+              <h2 id="station-name">Tranquility Outpost</h2>
+              <div class="station-subline"><span id="station-kicker">SURFACE OUTPOST</span><span class="divider">/</span><span>GRAVITY 1.62 M/S²</span></div>
+            </div>
+            <div class="station-scorebox">
+              <div><span>MISSION SCORE</span><b id="station-score">0</b></div>
+              <div><span>SALVAGE</span><b id="station-salvage">0</b></div>
+            </div>
+          </header>
+
+          <div class="station-body">
+            <div class="mission-debrief">
+              <div class="section-label">MISSION DEBRIEF</div>
+              <div id="station-mission-body" class="debrief-body"></div>
+              <div class="next-objective">
+                <span class="section-label">NEXT OBJECTIVE</span>
+                <b id="station-next-objective">Collect 3 mineral samples</b>
+                <small id="station-next-target">Then reach Tranquility Outpost</small>
+              </div>
+              <div class="station-actions">
+                <button id="btn-launch" class="btn btn-primary btn-launch" type="button">
+                  <span class="btn-copy"><small>HOLD ONTO YOUR HELMET</small><b>LAUNCH</b></span><span class="btn-arrow">›</span>
+                </button>
+                <div class="station-secondary">
+                  <button id="btn-station-menu" class="btn btn-mini" type="button">SAVE &amp; MENU</button>
+                  <button id="btn-station-help" class="btn btn-mini" type="button">FLIGHT MANUAL</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="upgrade-bay">
+              <div class="upgrade-head">
+                <div class="section-label">LANDER SERVICE BAY</div>
+                <span id="upgrade-credits">0 SALVAGE AVAILABLE</span>
+              </div>
+              <div id="upgrade-grid" class="upgrade-grid"></div>
+              <p class="upgrade-note"><span class="status-dot"></span> Upgrades persist across crashes and browser reloads. Auxiliary fuel tanks are cosmetic.</p>
+            </div>
+          </div>
+          <footer class="station-footer">
+            <span>HULL RESTORED // CHECKPOINT AUTOSAVED</span>
+            <span id="station-best">BEST 0</span>
+          </footer>
+        </div>
+      </section>
+
+      <!-- PAUSE -->
+      <section id="screen-pause" class="screen screen-centered hidden">
+        <div class="modal panel-pause">
+          <div class="section-label">FLIGHT SUSPENDED</div>
+          <h2>HOLDING<br/><span>STATION-KEEPING</span></h2>
+          <p class="modal-copy">The moon will wait. Your current flight is paused at the last stable frame.</p>
+          <div class="pause-stat-row">
+            <div><span>SCORE</span><b id="pause-score">0</b></div>
+            <div><span>RANGE</span><b id="pause-distance">0 M</b></div>
+            <div><span>CHECKPOINT</span><b id="pause-checkpoint">01</b></div>
+          </div>
+          <div class="modal-actions">
+            <button id="btn-resume" class="btn btn-primary" type="button"><span class="btn-copy"><b>RESUME FLIGHT</b></span><span class="btn-arrow">›</span></button>
+            <button id="btn-pause-settings" class="btn btn-mini" type="button">SETTINGS</button>
+            <button id="btn-pause-help" class="btn btn-mini" type="button">FLIGHT MANUAL</button>
+            <button id="btn-restart-checkpoint" class="btn btn-danger btn-mini" type="button">RETURN TO CHECKPOINT</button>
+            <button id="btn-pause-menu" class="btn btn-mini" type="button">ABANDON TO MENU</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="screen-settings" class="screen screen-centered hidden">
+        <div class="modal panel-settings">
+          <div class="modal-head">
+            <div><div class="section-label">COCKPIT CONFIGURATION</div><h2>SETTINGS</h2></div>
+            <button id="btn-settings-close" class="icon-close" type="button" aria-label="Close settings">×</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><b>MUSIC</b><span>Generative ambient score</span></div>
+            <div class="setting-control"><input id="setting-music" type="range" min="0" max="100" value="55" /><b id="value-music" class="range-value">55%</b><button id="mute-music" class="mute-btn" type="button" aria-label="Mute music">MUTE</button></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><b>SOUND EFFECTS</b><span>Engines, alerts, impacts</span></div>
+            <div class="setting-control"><input id="setting-sfx" type="range" min="0" max="100" value="72" /><b id="value-sfx" class="range-value">72%</b><button id="mute-sfx" class="mute-btn" type="button" aria-label="Mute sound effects">MUTE</button></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><b>SCREEN SHAKE</b><span>Impact and explosion feedback</span></div>
+            <div class="setting-control"><label class="switch"><input id="setting-shake" type="checkbox" checked /><span></span></label></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><b>RENDER QUALITY</b><span>Adaptive reduces effects on slower devices</span></div>
+            <div class="setting-control"><select id="setting-quality">
+              <option value="auto">AUTO</option><option value="high">HIGH</option><option value="low">LOW</option>
+            </select></div>
+          </div>
+          <div class="setting-foot">
+            <span>TIP: HOLD SPACE OR TOUCH. RELEASE TO FALL.</span>
+            <button id="btn-settings-defaults" class="text-btn" type="button">RESTORE DEFAULTS</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HELP -->
+      <section id="screen-help" class="screen screen-centered hidden">
+        <div class="modal panel-help">
+          <div class="modal-head">
+            <div><div class="section-label">LRV FLIGHT MANUAL // REV 04</div><h2>STAY<br/><span>AIRBORNE</span></h2></div>
+            <button id="btn-help-close" class="icon-close" type="button" aria-label="Close manual">×</button>
+          </div>
+          <div class="help-grid">
+            <div class="help-block">
+              <span class="help-num">01</span>
+              <b>THRUST</b>
+              <p>Hold <i class="keycap">SPACE</i>, <i class="keycap">W</i>, mouse button or touch to fire the descent engine. Release to fall under lunar gravity.</p>
+            </div>
+            <div class="help-block">
+              <span class="help-num">02</span>
+              <b>NAVIGATE</b>
+              <p>Thread caves, avoid alien drones and sentry fire. Your craft drifts forward automatically and slows near landing pads.</p>
+            </div>
+            <div class="help-block">
+              <span class="help-num">03</span>
+              <b>LAND</b>
+              <p>Fly low into the glowing pad beacon. The guidance computer takes over for touchdown, restores your hull and saves the checkpoint.</p>
+            </div>
+            <div class="help-block">
+              <span class="help-num">04</span>
+              <b>EXPLORE</b>
+              <p>Collect samples, science crates and stranded astronauts. Spend salvage at stations on engines, shields, hull plating and auxiliary tanks.</p>
+            </div>
+          </div>
+          <div class="help-warning"><span>!</span> No weapons aboard. Every alien contact costs hull. Evade.</div>
+          <button id="btn-help-done" class="btn btn-primary" type="button"><span class="btn-copy"><b>RETURN TO COCKPIT</b></span><span class="btn-arrow">›</span></button>
+        </div>
+      </section>
+
+      <!-- CRASH / GAME OVER -->
+      <section id="screen-crash" class="screen screen-centered hidden">
+        <div class="modal panel-crash">
+          <div class="crash-alarm"><span></span><span></span><span></span> HULL INTEGRITY LOST</div>
+          <h2>LANDER<br/><span>DOWN</span></h2>
+          <p class="modal-copy" id="crash-copy">The descent engine has gone dark. Emergency telemetry recovered.</p>
+          <div class="crash-grid">
+            <div><span>FINAL SCORE</span><b id="crash-score">0</b></div>
+            <div><span>BEST</span><b id="crash-best">0</b></div>
+            <div><span>RANGE</span><b id="crash-distance">0 M</b></div>
+            <div><span>SALVAGE</span><b id="crash-salvage">0</b></div>
+            <div><span>MISSIONS</span><b id="crash-missions">0</b></div>
+            <div><span>RESCUES</span><b id="crash-rescues">0</b></div>
+          </div>
+          <div class="modal-actions">
+            <button id="btn-respawn" class="btn btn-primary" type="button"><span class="btn-copy"><small>RESTORE LAST CHECKPOINT</small><b>RESPAWN</b></span><span class="btn-arrow">›</span></button>
+            <button id="btn-crash-new" class="btn btn-mini" type="button">NEW MISSION</button>
+            <button id="btn-crash-menu" class="btn btn-mini" type="button">RETURN TO MENU</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONFIRM -->
+      <section id="screen-confirm" class="screen screen-centered hidden">
+        <div class="modal panel-confirm">
+          <div class="section-label" id="confirm-kicker">CONFIRM COMMAND</div>
+          <h3 id="confirm-title">Erase mission progress?</h3>
+          <p id="confirm-message">This will erase the current mission, upgrades and salvage.</p>
+          <div class="modal-actions horizontal">
+            <button id="btn-confirm-cancel" class="btn btn-mini" type="button">CANCEL</button>
+            <button id="btn-confirm-ok" class="btn btn-danger" type="button">CONFIRM</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BOOT -->
+    <div id="boot">
+      <div class="boot-inner">
+        <div class="boot-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="boot-title">MOON LANDER EXPLORER</div>
+        <div class="boot-status" id="boot-status">CALIBRATING LUNAR GUIDANCE…</div>
+        <div class="boot-bar"><i></i></div>
+      </div>
+    </div>
+
+    <div id="error-banner" class="hidden" role="alert">
+      <b>SYSTEMS NOTICE</b><span id="error-message">…</span><button id="btn-error-dismiss" type="button">DISMISS</button>
+    </div>
+    <noscript><div class="noscript">Moon Lander Explorer requires JavaScript and a modern browser.</div></noscript>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
