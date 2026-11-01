@@ -2,9 +2,11 @@
 
 A self-contained HTML5 lunar exploration arcade game. Fly a thrust-only lander across a procedurally generated moon, collect mission objectives, avoid hazards, and unlock the next outpost checkpoint.
 
-**Play:** <http://mother.local:8080/moon-lander-explorer/>
+**Live demo:** <https://mattbullis1.github.io/moon-lander-explorer/>
 
-The game is served directly by XAMPP. There is no build step and no remote asset or font dependency.
+**Local play:** <http://mother.local:8080/moon-lander-explorer/>
+
+Both locations serve the same static game. There is no build step and no remote asset or font dependency.
 
 ## Controls
 
